@@ -219,7 +219,7 @@ async fn main() -> anyhow::Result<()> {
             assert!(unchoke.payload.is_empty());
 
             let piece_hash = &t.info.pieces.0[piece_i];
-            let piece_size = if piece_i == t.info.pieces.0.len() + 1 {
+            let piece_size = if piece_i == t.info.pieces.0.len() - 1 {
                 let md = length % t.info.plength;
                 if md == 0 {
                     t.info.plength

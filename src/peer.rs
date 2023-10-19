@@ -98,7 +98,7 @@ impl Piece {
         // length of the fat pointer to the slice, which we do by slicing it. We can't slice it at
         // the front (as it would invalidate the ptr part of the fat pointer), so we slice it at
         // the back!
-        let piece = &data[..n - Self::PIECE_LEAD + 1] as *const [u8] as *const Piece;
+        let piece = &data[..n - Self::PIECE_LEAD] as *const [u8] as *const Piece;
         // Safety: Piece is a POD with repr(c), _and_ the fat pointer data length is the length of
         // the trailing DST field (thanks to the PIECE_LEAD offset).
         Some(unsafe { &*piece })
@@ -198,7 +198,7 @@ impl Decoder for MessageFramer {
             }
         };
         let data = if src.len() > 5 {
-            src[5..4 + length - 1].to_vec()
+            src[5..4 + length].to_vec()
         } else {
             Vec::new()
         };
