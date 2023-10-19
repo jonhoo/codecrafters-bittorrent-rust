@@ -92,7 +92,7 @@ fn main() -> anyhow::Result<()> {
             let dot_torrent = std::fs::read(torrent).context("read torrent file")?;
             let t: Torrent =
                 serde_bencode::from_bytes(&dot_torrent).context("parse torrent file")?;
-            eprintln!("{t:?}");
+            // eprintln!("{t:?}");
             println!("Tracker URL: {}", t.announce);
             if let Keys::SingleFile { length } = t.info.keys {
                 println!("Length: {length}");
@@ -118,7 +118,7 @@ fn main() -> anyhow::Result<()> {
 
 mod hashes {
     use serde::de::{self, Deserialize, Deserializer, Visitor};
-    use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
+    use serde::ser::{Serialize, Serializer};
     use std::fmt;
 
     #[derive(Debug, Clone)]
