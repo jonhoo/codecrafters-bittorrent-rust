@@ -11,7 +11,7 @@ use std::net::SocketAddrV4;
 use std::path::PathBuf;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-const BLOCK_MAX: usize = 1 << 15;
+const BLOCK_MAX: usize = 1 << 14;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -251,8 +251,9 @@ async fn main() -> anyhow::Result<()> {
                 assert_eq!(piece.tag, MessageTag::Piece);
                 assert!(!piece.payload.is_empty());
 
-                let piece = (&piece.payload[..]) as *const [u8] as *const Piece;
-                let piece = unsafe { &*piece };
+                let piece = Piece::ref_from_bytes(&piece.payload[..])
+                    .expect("always get all Piece response fields from peer");
+                assert_eq!(piece.begin() as usize, block * BLOCK_MAX);
                 assert_eq!(piece.block().len(), block_size);
                 all_blocks.extend(piece.block());
             }
