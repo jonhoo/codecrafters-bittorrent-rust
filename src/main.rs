@@ -192,7 +192,6 @@ async fn main() -> anyhow::Result<()> {
             }
             assert_eq!(handshake.length, 19);
             assert_eq!(&handshake.bittorrent, b"BitTorrent protocol");
-            println!("Peer ID: {}", hex::encode(&handshake.peer_id));
 
             let mut peer = tokio_util::codec::Framed::new(peer, MessageFramer);
             let bitfield = peer
@@ -231,7 +230,6 @@ async fn main() -> anyhow::Result<()> {
             };
             // the + (BLOCK_MAX - 1) rounds up
             let nblocks = (piece_size + (BLOCK_MAX - 1)) / BLOCK_MAX;
-            eprintln!("{nblocks} blocks of at most {BLOCK_MAX} to reach {piece_size}");
             let mut all_blocks = Vec::with_capacity(piece_size);
             for block in 0..nblocks {
                 let block_size = if block == nblocks - 1 {
@@ -244,7 +242,6 @@ async fn main() -> anyhow::Result<()> {
                 } else {
                     BLOCK_MAX
                 };
-                eprintln!("block #{block} is {block_size}b");
                 let mut request = Request::new(
                     piece_i as u32,
                     (block * BLOCK_MAX) as u32,
@@ -273,7 +270,6 @@ async fn main() -> anyhow::Result<()> {
                 assert_eq!(piece.block().len(), block_size);
                 all_blocks.extend(piece.block());
             }
-
             assert_eq!(all_blocks.len(), piece_size);
 
             let mut hasher = Sha1::new();
@@ -283,6 +279,11 @@ async fn main() -> anyhow::Result<()> {
                 .try_into()
                 .expect("GenericArray<_, 20> == [_; 20]");
             assert_eq!(&hash, piece_hash);
+
+            tokio::fs::write(&output, all_blocks)
+                .await
+                .context("write out downloaded piece")?;
+            println!("Piece {piece_i} downloaded to {}.", output.display());
         }
     }
 
