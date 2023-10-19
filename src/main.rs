@@ -1,9 +1,10 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use hashes::Hashes;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_bencode;
 use serde_json;
+use sha1::{Digest, Sha1};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -20,7 +21,7 @@ enum Command {
 }
 
 /// A Metainfo file (also known as .torrent files).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct Torrent {
     /// The URL of the tracker.
     announce: String,
@@ -28,7 +29,7 @@ struct Torrent {
     info: Info,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct Info {
     /// The suggested name to save the file (or directory) as. It is purely advisory.
     ///
@@ -53,7 +54,7 @@ struct Info {
 }
 
 /// There is a key `length` or a key `files`, but not both or neither.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 enum Keys {
     /// If `length` is present then the download represents a single file.
@@ -68,7 +69,7 @@ enum Keys {
     MultiFile { files: Vec<File> },
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct File {
     /// The length of the file, in bytes.
     length: usize,
@@ -98,6 +99,12 @@ fn main() -> anyhow::Result<()> {
             } else {
                 todo!();
             }
+            let info_encoded =
+                serde_bencode::to_bytes(&t.info).context("re-encode info section")?;
+            let mut hasher = Sha1::new();
+            hasher.update(&info_encoded);
+            let info_hash = hasher.finalize();
+            println!("Info Hash: {}", hex::encode(&info_hash));
         }
     }
 
@@ -106,6 +113,7 @@ fn main() -> anyhow::Result<()> {
 
 mod hashes {
     use serde::de::{self, Deserialize, Deserializer, Visitor};
+    use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
     use std::fmt;
 
     #[derive(Debug, Clone)]
@@ -141,6 +149,16 @@ mod hashes {
             D: Deserializer<'de>,
         {
             deserializer.deserialize_bytes(HashesVisitor)
+        }
+    }
+
+    impl Serialize for Hashes {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            let single_slice = self.0.concat();
+            serializer.serialize_bytes(&single_slice)
         }
     }
 }
