@@ -141,7 +141,7 @@ async fn main() -> anyhow::Result<()> {
         Command::DownloadPiece {
             output,
             torrent,
-            piece,
+            piece: piece_i,
         } => {
             let dot_torrent = std::fs::read(torrent).context("read torrent file")?;
             let t: Torrent =
@@ -151,7 +151,7 @@ async fn main() -> anyhow::Result<()> {
             } else {
                 todo!();
             };
-            assert!(piece < t.info.pieces.0.len());
+            assert!(piece_i < t.info.pieces.0.len());
 
             let info_hash = t.info_hash();
             let request = TrackerRequest {
@@ -218,23 +218,38 @@ async fn main() -> anyhow::Result<()> {
             assert_eq!(unchoke.tag, MessageTag::Unchoke);
             assert!(unchoke.payload.is_empty());
 
-            let piece_hash = &t.info.pieces.0[piece];
-            let piece_size = if piece == t.info.pieces.0.len() + 1 {
-                length % t.info.plength
+            let piece_hash = &t.info.pieces.0[piece_i];
+            let piece_size = if piece_i == t.info.pieces.0.len() + 1 {
+                let md = length % t.info.plength;
+                if md == 0 {
+                    t.info.plength
+                } else {
+                    md
+                }
             } else {
                 t.info.plength
             };
             // the + (BLOCK_MAX - 1) rounds up
             let nblocks = (piece_size + (BLOCK_MAX - 1)) / BLOCK_MAX;
+            eprintln!("{nblocks} blocks of at most {BLOCK_MAX} to reach {piece_size}");
             let mut all_blocks = Vec::with_capacity(piece_size);
             for block in 0..nblocks {
                 let block_size = if block == nblocks - 1 {
-                    piece_size % BLOCK_MAX
+                    let md = piece_size % BLOCK_MAX;
+                    if md == 0 {
+                        BLOCK_MAX
+                    } else {
+                        md
+                    }
                 } else {
                     BLOCK_MAX
                 };
-                let mut request =
-                    Request::new(piece as u32, (block * BLOCK_MAX) as u32, block_size as u32);
+                eprintln!("block #{block} is {block_size}b");
+                let mut request = Request::new(
+                    piece_i as u32,
+                    (block * BLOCK_MAX) as u32,
+                    block_size as u32,
+                );
                 let request_bytes = Vec::from(request.as_bytes_mut());
                 peer.send(Message {
                     tag: MessageTag::Request,
@@ -253,6 +268,7 @@ async fn main() -> anyhow::Result<()> {
 
                 let piece = Piece::ref_from_bytes(&piece.payload[..])
                     .expect("always get all Piece response fields from peer");
+                assert_eq!(piece.index() as usize, piece_i);
                 assert_eq!(piece.begin() as usize, block * BLOCK_MAX);
                 assert_eq!(piece.block().len(), block_size);
                 all_blocks.extend(piece.block());
