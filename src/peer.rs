@@ -93,7 +93,7 @@ impl Piece {
         }
         let n = data.len();
         // NOTE: The slicing here looks really weird. The reason we do it is because we need the
-        // length part of the fat pointer to Piece to old the length of _just_ the `block` field.
+        // length part of the fat pointer to Piece to hold the length of _just_ the `block` field.
         // And the only way we can change the length of the fat pointer to Piece is by changing the
         // length of the fat pointer to the slice, which we do by slicing it. We can't slice it at
         // the front (as it would invalidate the ptr part of the fat pointer), so we slice it at
