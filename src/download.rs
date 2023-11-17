@@ -120,7 +120,7 @@ pub(crate) async fn all(t: &Torrent) -> anyhow::Result<Downloaded> {
                         let piece = crate::peer::Piece::ref_from_bytes(&piece.payload[..])
                             .expect("always get all Piece response fields from peer");
                         bytes_received += piece.block().len();
-                        all_blocks[piece.begin() as usize..].copy_from_slice(piece.block());
+                        all_blocks[piece.begin() as usize..][..piece.block().len()].copy_from_slice(piece.block());
                     } else {
                         // have received every piece (or no peers left)
                         // this must mean that all participations have either exited or are waiting
@@ -150,7 +150,7 @@ pub(crate) async fn all(t: &Torrent) -> anyhow::Result<Downloaded> {
             .expect("GenericArray<_, 20> == [_; 20]");
         assert_eq!(hash, piece.hash());
 
-        all_pieces[piece.index() * t.info.plength..].copy_from_slice(&all_blocks);
+        all_pieces[piece.index() * t.info.plength..][..piece_size].copy_from_slice(&all_blocks);
     }
 
     Ok(Downloaded {
