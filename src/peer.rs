@@ -64,6 +64,8 @@ impl Peer {
         tasks: kanal::AsyncReceiver<usize>,
         finish: tokio::sync::mpsc::Sender<Message>,
     ) -> anyhow::Result<()> {
+        anyhow::ensure!(self.bitfield.has_piece(piece_i));
+
         self.stream
             .send(Message {
                 tag: MessageTag::Interested,
