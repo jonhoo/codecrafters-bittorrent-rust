@@ -88,12 +88,14 @@ pub(crate) async fn all(t: &Torrent) -> anyhow::Result<Downloaded> {
         drop(finish);
         drop(tasks);
 
+        eprintln!("start receive loop");
         let mut all_blocks = vec![0u8; piece_size];
         let mut bytes_received = 0;
         loop {
             tokio::select! {
                 joined = participants.next(), if !participants.is_empty() => {
                     // if a participant ends early, it's either slow or failed
+                    eprintln!("participant finished");
                     match joined {
                         None => {
                             // there are no peers!
@@ -116,16 +118,22 @@ pub(crate) async fn all(t: &Torrent) -> anyhow::Result<Downloaded> {
                 }
                 piece = done.recv() => {
                     if let Some(piece) = piece {
+                        eprintln!("got piece");
                         // keep track of the bytes in message
                         let piece = crate::peer::Piece::ref_from_bytes(&piece.payload[..])
                             .expect("always get all Piece response fields from peer");
                         bytes_received += piece.block().len();
                         all_blocks[piece.begin() as usize..][..piece.block().len()].copy_from_slice(piece.block());
+                        if bytes_received == piece_size {
+                            // have received every piece
+                            // this must mean that all participations have either exited or are
+                            // waiting for more work -- in either case, it is okay to drop all the
+                            // participant futures.
+                            break;
+                        }
                     } else {
-                        // have received every piece (or no peers left)
-                        // this must mean that all participations have either exited or are waiting
-                        // for more work -- in either case, it is okay to drop all the participant
-                        // futures.
+                        eprintln!("got pieces end");
+                        // there are no peers left, so we can't progress!
                         break;
                     }
                 }
