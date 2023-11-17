@@ -53,7 +53,9 @@ pub(crate) async fn all(t: &Torrent) -> anyhow::Result<Downloaded> {
     // TODO
     assert!(no_peers.is_empty());
 
-    // TODO: this is dumb
+    // TODO: this is dumb because all the pieces for a given torrent may not fit in memory!
+    // should probably write every piece to disk so that we can also resume downloads, and seed
+    // later on.
     let mut all_pieces = vec![0; t.length()];
     while let Some(piece) = need_pieces.pop() {
         // the + (BLOCK_MAX - 1) rounds up
