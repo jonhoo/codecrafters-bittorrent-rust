@@ -1,7 +1,7 @@
 use anyhow::Context;
-use bittorrent_starter_rust::peer::*;
 use bittorrent_starter_rust::torrent::{self, Torrent};
 use bittorrent_starter_rust::tracker::*;
+use bittorrent_starter_rust::{peer::*, BLOCK_MAX};
 use clap::{Parser, Subcommand};
 use futures_util::{SinkExt, StreamExt};
 use serde_bencode;
@@ -10,8 +10,6 @@ use sha1::{Digest, Sha1};
 use std::net::SocketAddrV4;
 use std::path::PathBuf;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-const BLOCK_MAX: usize = 1 << 14;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -41,6 +39,11 @@ enum Command {
         output: PathBuf,
         torrent: PathBuf,
         piece: usize,
+    },
+    Download {
+        #[arg(short)]
+        output: PathBuf,
+        torrent: PathBuf,
     },
 }
 
@@ -284,6 +287,17 @@ async fn main() -> anyhow::Result<()> {
                 .await
                 .context("write out downloaded piece")?;
             println!("Piece {piece_i} downloaded to {}.", output.display());
+        }
+        Command::Download { output, torrent } => {
+            let torrent = Torrent::read(torrent).await?;
+            torrent.print_tree();
+            // torrent.download_all_to_file(output).await?;
+            let files = torrent.download_all().await?;
+            tokio::fs::write(
+                output,
+                files.into_iter().next().expect("always one file").bytes(),
+            )
+            .await?;
         }
     }
 

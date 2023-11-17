@@ -38,3 +38,4 @@ tokio-util = { version = "0.7.9", features = ["full"] }            # async http 
 futures-core = "0.3"
 futures-sink = "0.3"
 futures-util = { version = "0.3", features = ["sink"] }
+kanal = "0.1.0-pre8"
