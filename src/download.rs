@@ -210,6 +210,7 @@ impl<'d> Iterator for DownloadedIter<'d> {
     fn next(&mut self) -> Option<Self::Item> {
         let file = self.file_iter.next()?;
         let bytes = &self.downloaded.bytes[self.offset..][..file.length];
+        self.offset += file.length;
         Some(DownloadedFile { file, bytes })
     }
 }
