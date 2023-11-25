@@ -253,6 +253,7 @@ fn bitfield_iter() {
 }
 
 #[repr(C)]
+#[repr(packed)]
 pub struct Handshake {
     pub length: u8,
     pub bittorrent: [u8; 19],
@@ -274,13 +275,14 @@ impl Handshake {
 
     pub fn as_bytes_mut(&mut self) -> &mut [u8] {
         let bytes = self as *mut Self as *mut [u8; std::mem::size_of::<Self>()];
-        // Safety: Handshake is a POD with repr(c)
+        // Safety: Self is a POD with repr(c) and repr(packed)
         let bytes: &mut [u8; std::mem::size_of::<Self>()] = unsafe { &mut *bytes };
         bytes
     }
 }
 
 #[repr(C)]
+#[repr(packed)]
 pub struct Request {
     index: [u8; 4],
     begin: [u8; 4],
@@ -310,13 +312,16 @@ impl Request {
 
     pub fn as_bytes_mut(&mut self) -> &mut [u8] {
         let bytes = self as *mut Self as *mut [u8; std::mem::size_of::<Self>()];
-        // Safety: Handshake is a POD with repr(c)
+        // Safety: Self is a POD with repr(c) and repr(packed)
         let bytes: &mut [u8; std::mem::size_of::<Self>()] = unsafe { &mut *bytes };
         bytes
     }
 }
 
 #[repr(C)]
+// NOTE: needs to be (and is)
+// #[repr(packed)]
+// but can't be marked as such because of the T: ?Sized part
 pub struct Piece<T: ?Sized = [u8]> {
     index: [u8; 4],
     begin: [u8; 4],
@@ -349,8 +354,8 @@ impl Piece {
         // the front (as it would invalidate the ptr part of the fat pointer), so we slice it at
         // the back!
         let piece = &data[..n - Self::PIECE_LEAD] as *const [u8] as *const Piece;
-        // Safety: Piece is a POD with repr(c), _and_ the fat pointer data length is the length of
-        // the trailing DST field (thanks to the PIECE_LEAD offset).
+        // Safety: Piece is a POD with repr(c) and repr(packed), _and_ the fat pointer data length
+        // is the length of the trailing DST field (thanks to the PIECE_LEAD offset).
         Some(unsafe { &*piece })
     }
 }

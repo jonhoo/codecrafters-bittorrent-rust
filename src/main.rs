@@ -127,7 +127,7 @@ async fn main() -> anyhow::Result<()> {
             {
                 let handshake_bytes =
                     &mut handshake as *mut Handshake as *mut [u8; std::mem::size_of::<Handshake>()];
-                // Safety: Handshake is a POD with repr(c)
+                // Safety: Handshake is a POD with repr(c) and repr(packed)
                 let handshake_bytes: &mut [u8; std::mem::size_of::<Handshake>()] =
                     unsafe { &mut *handshake_bytes };
                 peer.write_all(handshake_bytes)
